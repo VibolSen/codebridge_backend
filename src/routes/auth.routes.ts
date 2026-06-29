@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { login, register, verifyOTP, updateProfile, getGoogleAuthUrl } from '../controllers/auth.controller';
+import { login, register, verifyOTP, updateProfile, getGoogleAuthUrl, googleCallback } from '../controllers/auth.controller';
 import { verifyToken } from '../middleware/auth.middleware';
 import { upload } from '../middleware/upload.middleware';
 
@@ -97,5 +97,17 @@ router.put('/profile', verifyToken, upload.single('image'), updateProfile);
  *         description: URL generated
  */
 router.get('/google', getGoogleAuthUrl);
+
+/**
+ * @swagger
+ * /auth/google/callback:
+ *   get:
+ *     summary: Google OAuth Callback
+ *     tags: [Auth]
+ *     responses:
+ *       302:
+ *         description: Redirects to frontend
+ */
+router.get('/google/callback', googleCallback);
 
 export default router;

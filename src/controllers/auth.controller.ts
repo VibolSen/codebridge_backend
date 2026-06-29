@@ -141,3 +141,66 @@ export const getGoogleAuthUrl = async (req: Request, res: Response) => {
   const qs = new URLSearchParams(options);
   res.redirect(`${rootUrl}?${qs.toString()}`);
 };
+
+export const googleCallback = async (req: Request, res: Response) => {
+  try {
+    const code = req.query.code as string;
+    if (!code) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
+
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URL || 'http://localhost:5000/api/auth/google/callback',
+        grant_type: 'authorization_code',
+      }).toString(),
+    });
+
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) {
+      console.error('Failed to get Google token:', tokenData);
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+    }
+
+    const userRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` },
+    });
+    const googleUser = await userRes.json();
+
+    if (!googleUser.email) {
+      return res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=no_email`);
+    }
+
+    let user = await prisma.user.findUnique({ where: { email: googleUser.email } });
+
+    if (!user) {
+      const dummyPassword = await bcrypt.hash(Math.random().toString(36).slice(-8), 10);
+      user = await prisma.user.create({
+        data: {
+          email: googleUser.email,
+          name: googleUser.name || 'Google User',
+          password: dummyPassword,
+        }
+      });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    const { password: _, otp: __, otpExpires: ___, ...userWithoutSensitiveData } = user;
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    
+    res.redirect(`${frontendUrl}/auth/callback?token=${token}&user=${encodeURIComponent(JSON.stringify(userWithoutSensitiveData))}`);
+  } catch (error) {
+    console.error('Google OAuth callback error:', error);
+    res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/login?error=oauth_failed`);
+  }
+};
