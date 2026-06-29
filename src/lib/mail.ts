@@ -1,4 +1,4 @@
-const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwJV1PnQnrReCOivTQVqulMlr1TNVmqU6yqjS3n5BjjKl52FyZqKTvg6DDGPlb5dd21iQ/exec';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwJV1PnQnrReCOivTQVqulMlr1TNVmqU6yqjS3n5BjjKI52FyZqKTvg6DDGPlb5dd21iQ/exec';
 
 const sendViaWebhook = async (mailOptions: any) => {
   try {
