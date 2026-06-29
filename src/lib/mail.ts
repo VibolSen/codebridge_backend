@@ -1,20 +1,33 @@
-import nodemailer from 'nodemailer';
+const WEBHOOK_URL = 'https://script.google.com/macros/s/AKfycbwJV1PnQnrReCOivTQVqulMlr1TNVmqU6yqjS3n5BjjKl52FyZqKTvg6DDGPlb5dd21iQ/exec';
 
-const transporter = nodemailer.createTransport({
-  host: process.env.MAIL_HOST,
-  port: parseInt(process.env.MAIL_PORT || '587'),
-  secure: process.env.MAIL_ENCRYPTION === 'ssl', // true for 465, false for other ports
-  auth: {
-    user: process.env.MAIL_USERNAME,
-    pass: process.env.MAIL_PASSWORD,
-  },
-});
+const sendViaWebhook = async (mailOptions: any) => {
+  try {
+    const response = await fetch(WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify({
+        to: mailOptions.to,
+        subject: mailOptions.subject,
+        html: mailOptions.html
+      })
+    });
+    const result = await response.json();
+    if (result.status !== 'success') {
+      throw new Error(result.message || 'Webhook failed');
+    }
+    return result;
+  } catch (error) {
+    console.error('Webhook Email Error:', error);
+    throw error;
+  }
+};
 
 export const sendPasswordResetEmail = async (email: string, token: string) => {
   const resetLink = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
   
   const mailOptions = {
-    from: `"${process.env.MAIL_FROM_NAME || 'CodeBridge'}" <${process.env.MAIL_FROM_ADDRESS}>`,
     to: email,
     subject: 'Password Reset Request',
     html: `
@@ -31,13 +44,13 @@ export const sendPasswordResetEmail = async (email: string, token: string) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return sendViaWebhook(mailOptions);
 };
+
 export const sendContactEmail = async ({ name, email, message }: { name: string, email: string, message: string }) => {
   const adminEmail = process.env.ADMIN_EMAIL || 'codebridge2026@gmail.com';
   
   const mailOptions = {
-    from: `"${process.env.MAIL_FROM_NAME || 'CodeBridge'}" <${process.env.MAIL_FROM_ADDRESS}>`,
     to: adminEmail,
     subject: `New Contact Form Submission from ${name}`,
     html: `
@@ -53,15 +66,13 @@ export const sendContactEmail = async ({ name, email, message }: { name: string,
         <p style="font-size: 11px; color: #888;">This message was submitted via the contact form on ${process.env.NEXT_PUBLIC_APP_URL || 'your website'}.</p>
       </div>
     `,
-    replyTo: email
   };
 
-  return transporter.sendMail(mailOptions);
+  return sendViaWebhook(mailOptions);
 };
 
 export const sendOTPEmail = async (email: string, otp: string | number) => {
   const mailOptions = {
-    from: `"${process.env.MAIL_FROM_NAME || 'CodeBridge'}" <${process.env.MAIL_FROM_ADDRESS}>`,
     to: email,
     subject: 'Your Verification Code',
     html: `
@@ -81,5 +92,5 @@ export const sendOTPEmail = async (email: string, otp: string | number) => {
     `,
   };
 
-  return transporter.sendMail(mailOptions);
+  return sendViaWebhook(mailOptions);
 };
