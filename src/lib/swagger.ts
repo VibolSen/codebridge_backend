@@ -12,6 +12,10 @@ const options: swaggerJsdoc.Options = {
     },
     servers: [
       {
+        url: 'https://codebridge-backend-5vcr.onrender.com/api',
+        description: 'Production server',
+      },
+      {
         url: 'http://localhost:5000/api',
         description: 'Development server',
       },
